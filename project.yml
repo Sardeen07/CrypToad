@@ -1,0 +1,21 @@
+# XcodeGen spec — run `xcodegen generate` to create CrypToad.xcodeproj
+name: CrypToad
+options:
+  bundleIdPrefix: com.sardeen07
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  CrypToad:
+    type: application
+    platform: iOS
+    sources:
+      - CrypToad
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sardeen07.cryptoad
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
