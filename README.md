@@ -29,13 +29,6 @@ for the full platform.
 > no real card, no real crypto, and no bank connection yet. See
 > [What's built vs. planned](#whats-built-vs-planned).
 
-## Screenshots
-
-| Home | Round-Ups | Invest (DCA) | Card |
-|:---:|:---:|:---:|:---:|
-| ![Home](docs/screenshots/home.png) | ![Round-Ups](docs/screenshots/roundup.png) | ![DCA](docs/screenshots/dca.png) | ![Card](docs/screenshots/card.png) |
-
-## Features
 
 ### Built (prototype)
 
