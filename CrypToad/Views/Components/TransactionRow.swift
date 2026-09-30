@@ -1,80 +1,91 @@
 import SwiftUI
+import CrypToadCore
 
 struct TransactionRow: View {
-    let transaction: Transaction
+    let transaction: TransactionRecord
 
     var body: some View {
         HStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(iconBackground)
+                    .fill(iconColor.opacity(0.2))
                     .frame(width: 32, height: 32)
                 Image(systemName: iconName)
                     .font(.caption)
-                    .foregroundColor(iconColor)
+                    .foregroundStyle(iconColor)
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(transactionTitle)
+                Text(title)
                     .font(.subheadline)
                     .fontWeight(.medium)
-                    .foregroundColor(.white)
-                Text(transaction.date)
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                Text(transaction.date.formatted(date: .abbreviated, time: .shortened))
                     .font(.caption)
-                    .foregroundColor(.gray)
+                    .foregroundStyle(.gray)
             }
 
             Spacer()
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text("\(transaction.type == .deposit ? "+" : "-")$\(transaction.amount, specifier: "%.2f")")
+                Text((transaction.isCredit ? "+" : "-") + transaction.amountUSD.usd)
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundColor(transaction.type == .deposit ? .green : .white)
+                    .foregroundStyle(transaction.isCredit ? Color.green : Color.white)
+                    .monospacedDigit()
 
-                if transaction.roundUp > 0 {
-                    Text("+$\(transaction.roundUp, specifier: "%.2f") invested")
+                if let detail {
+                    Text(detail)
                         .font(.caption)
-                        .foregroundColor(.blue)
+                        .foregroundStyle(.blue)
                 }
             }
         }
         .padding(8)
+        .accessibilityElement(children: .combine)
     }
 
-    var iconName: String {
-        switch transaction.type {
+    private var title: String {
+        switch transaction.kind {
+        case .p2pSent: return "Sent to \(transaction.title)"
+        default: return transaction.title
+        }
+    }
+
+    /// Secondary line, e.g. "+$0.75 → BTC" for a round-up or "0.0005 BTC" for a trade.
+    private var detail: String? {
+        if transaction.roundUpUSD > 0 {
+            return "+\(transaction.roundUpUSD.usd) → \(transaction.investedSummary ?? "USDC")"
+        }
+        switch transaction.kind {
+        case .trade:
+            guard let fill = transaction.fills.first else { return nil }
+            return "+" + fill.asset.format(fill.quantity)
+        case .dcaBuy:
+            return transaction.investedSummary.map { "→ \($0)" }
+        default:
+            return nil
+        }
+    }
+
+    private var iconName: String {
+        switch transaction.kind {
         case .purchase: return "creditcard"
-        case .deposit: return "arrow.up.circle"
-        case .dca: return "chart.line.uptrend.xyaxis"
+        case .deposit: return "arrow.down.circle"
+        case .dcaBuy: return "chart.line.uptrend.xyaxis"
+        case .trade: return "arrow.left.arrow.right"
         case .p2pSent: return "paperplane"
         }
     }
 
-    var iconColor: Color {
-        switch transaction.type {
+    private var iconColor: Color {
+        switch transaction.kind {
         case .purchase: return .red
         case .deposit: return .green
-        case .dca: return .blue
+        case .dcaBuy: return .blue
+        case .trade: return .orange
         case .p2pSent: return .purple
-        }
-    }
-
-    var iconBackground: Color {
-        switch transaction.type {
-        case .purchase: return Color.red.opacity(0.2)
-        case .deposit: return Color.green.opacity(0.2)
-        case .dca: return Color.blue.opacity(0.2)
-        case .p2pSent: return Color.purple.opacity(0.2)
-        }
-    }
-
-    var transactionTitle: String {
-        switch transaction.type {
-        case .purchase: return transaction.merchant ?? "Purchase"
-        case .deposit: return "Paycheck Deposit"
-        case .dca: return "Auto-Investment (DCA)"
-        case .p2pSent: return "Sent to \(transaction.recipient ?? "User")"
         }
     }
 }

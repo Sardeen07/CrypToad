@@ -4,8 +4,17 @@ struct StrategyCard: View {
     let title: String
     let description: String
     let isActive: Bool
+    let action: () -> Void
 
     var body: some View {
+        Button(action: action) {
+            content
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isActive ? .isSelected : [])
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(title)
@@ -29,6 +38,7 @@ struct StrategyCard: View {
                 .foregroundColor(.gray)
         }
         .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(isActive ? Color.blue.opacity(0.2) : Color(red: 0.26, green: 0.26, blue: 0.28))
         .cornerRadius(8)
         .overlay(

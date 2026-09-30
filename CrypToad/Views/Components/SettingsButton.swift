@@ -4,9 +4,10 @@ struct SettingsButton: View {
     let icon: String
     let title: String
     let subtitle: String
+    let action: () -> Void
 
     var body: some View {
-        Button(action: {}) {
+        Button(action: action) {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
@@ -22,6 +23,9 @@ struct SettingsButton: View {
                         .foregroundColor(.gray)
                 }
                 Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.gray)
             }
             .padding()
             .background(Color(red: 0.26, green: 0.26, blue: 0.28))

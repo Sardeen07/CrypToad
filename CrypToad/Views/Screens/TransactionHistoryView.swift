@@ -1,49 +1,57 @@
 import SwiftUI
+import CrypToadCore
 
-/// Full transaction list, reached from "View All Transactions" on the home screen.
+/// Full transaction list with a type filter.
 struct TransactionHistoryView: View {
-    let transactions: [Transaction]
-    let changeView: (String) -> Void
+    @Environment(PortfolioStore.self) private var store
+    let navigate: (Screen) -> Void
+
+    enum Filter: String, CaseIterable, Identifiable {
+        case all = "All"
+        case spending = "Spending"
+        case investing = "Investing"
+        case deposits = "Deposits"
+        var id: String { rawValue }
+
+        func includes(_ tx: TransactionRecord) -> Bool {
+            switch self {
+            case .all: return true
+            case .spending: return tx.kind == .purchase || tx.kind == .p2pSent
+            case .investing: return tx.kind == .dcaBuy || tx.kind == .trade || tx.roundUpUSD > 0
+            case .deposits: return tx.kind == .deposit
+            }
+        }
+    }
+
+    @State private var filter: Filter = .all
+
+    private var filtered: [TransactionRecord] {
+        store.state.transactions.filter(filter.includes)
+    }
 
     var body: some View {
         VStack(spacing: 24) {
-            Button(action: { changeView("home") }) {
-                HStack {
-                    Image(systemName: "chevron.left")
-                    Text("Back to Home")
-                }
-                .foregroundColor(.blue)
-                .fontWeight(.medium)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            BackButton { navigate(.home) }
 
             VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 8) {
-                    Image(systemName: "list.bullet")
-                        .foregroundColor(.blue)
-                    Text("All Transactions")
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                }
-                .font(.headline)
+                SectionHeader(icon: "list.bullet", title: "All Transactions")
 
-                if transactions.isEmpty {
+                Picker("Filter", selection: $filter) {
+                    ForEach(Filter.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+
+                if filtered.isEmpty {
                     Text("No transactions yet.")
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                 } else {
-                    ForEach(transactions) { tx in
+                    ForEach(filtered) { tx in
                         TransactionRow(transaction: tx)
                     }
                 }
             }
-            .padding()
-            .background(Color(red: 0.16, green: 0.16, blue: 0.18))
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color(red: 0.26, green: 0.26, blue: 0.28), lineWidth: 1)
-            )
+            .cardStyle()
         }
     }
 }

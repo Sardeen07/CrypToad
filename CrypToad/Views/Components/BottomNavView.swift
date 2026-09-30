@@ -1,21 +1,21 @@
 import SwiftUI
 
 struct BottomNavView: View {
-    @Binding var currentView: String
+    @Binding var current: Screen
 
     var body: some View {
         HStack(spacing: 0) {
-            NavButton(icon: "wallet.pass", label: "Home", isSelected: currentView == "home") {
-                currentView = "home"
+            NavButton(icon: "wallet.pass", label: "Home", isSelected: current == .home) {
+                current = .home
             }
-            NavButton(icon: "chart.line.uptrend.xyaxis", label: "Invest", isSelected: currentView == "dca") {
-                currentView = "dca"
+            NavButton(icon: "chart.line.uptrend.xyaxis", label: "Invest", isSelected: current == .invest) {
+                current = .invest
             }
-            NavButton(icon: "creditcard", label: "Card", isSelected: currentView == "card") {
-                currentView = "card"
+            NavButton(icon: "creditcard", label: "Card", isSelected: current == .card) {
+                current = .card
             }
-            NavButton(icon: "arrow.up.circle", label: "Round-Up", isSelected: currentView == "roundup") {
-                currentView = "roundup"
+            NavButton(icon: "arrow.up.circle", label: "Round-Up", isSelected: current == .roundUp) {
+                current = .roundUp
             }
         }
         .padding(.vertical, 8)

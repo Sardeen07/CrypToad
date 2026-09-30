@@ -4,12 +4,17 @@ options:
   bundleIdPrefix: com.sardeen07
   deploymentTarget:
     iOS: "17.0"
+packages:
+  CrypToadCore:
+    path: CrypToadCore
 targets:
   CrypToad:
     type: application
     platform: iOS
     sources:
       - CrypToad
+    dependencies:
+      - package: CrypToadCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sardeen07.cryptoad
@@ -17,5 +22,8 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_KEY_NSFaceIDUsageDescription: "CrypToad uses Face ID to lock the app and protect your card details."
+        INFOPLIST_KEY_CFBundleDisplayName: CrypToad
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        MARKETING_VERSION: "0.2.0"
+        CURRENT_PROJECT_VERSION: "2"

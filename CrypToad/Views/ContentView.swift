@@ -1,88 +1,114 @@
 import SwiftUI
+import CrypToadCore
 
-/// Root view. Holds prototype state (mock data) and routes between screens.
+enum Screen: Hashable {
+    case home, invest, card, roundUp, history
+}
+
+enum ActiveSheet: String, Identifiable {
+    case settings, trade, roundUpAllocation, dcaAllocation, dcaSchedule
+    var id: String { rawValue }
+}
+
+/// App shell: header, the current screen, bottom navigation, and sheets.
 struct ContentView: View {
-    @State private var currentView: String = "home"
-    @State private var balances = Balance(usdc: 1234.56, btc: 0.0234, eth: 0.456)
-    @State private var roundUpEnabled = true
-    @State private var roundUpTotal = 127.43
-    @State private var dcaSettings = DCASettings(
-        enabled: true,
-        amount: 100,
-        frequency: "weekly",
-        allocation: ["btc": 50, "eth": 30, "usdc": 20]
-    )
-    @State private var transactions: [Transaction] = [
-        Transaction(id: 1, type: .purchase, merchant: "Starbucks", recipient: nil, amount: 4.25, roundUp: 0.75, date: "2025-11-13", crypto: "BTC"),
-        Transaction(id: 2, type: .dca, merchant: nil, recipient: nil, amount: 100, roundUp: 0, date: "2025-11-11", crypto: "Mixed"),
-        Transaction(id: 3, type: .purchase, merchant: "Amazon", recipient: nil, amount: 47.89, roundUp: 0.11, date: "2025-11-12", crypto: "ETH"),
-        Transaction(id: 4, type: .deposit, merchant: nil, recipient: nil, amount: 2500, roundUp: 0, date: "2025-11-10", crypto: "USDC"),
-        Transaction(id: 5, type: .p2pSent, merchant: nil, recipient: "Sarah K.", amount: 25, roundUp: 0, date: "2025-11-09", crypto: "USDC")
-    ]
+    @Environment(PortfolioStore.self) private var store
+    @Environment(AppLock.self) private var lock
 
-    /// Static mock prices. A real build would pull these from a market-data API.
-    let prices: [String: Double] = ["btc": 92340, "eth": 3120, "usdc": 1.00]
+    @State private var screen: Screen = .home
+    @State private var sheet: ActiveSheet?
 
     var body: some View {
         ZStack {
-            Color(red: 0.11, green: 0.11, blue: 0.13)
-                .ignoresSafeArea()
+            Theme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                HeaderView()
+                HeaderView(onSettings: { sheet = .settings })
 
                 ScrollView {
                     VStack(spacing: 16) {
-                        switch currentView {
-                        case "roundup":
-                            RoundUpView(roundUpEnabled: $roundUpEnabled, roundUpTotal: $roundUpTotal, transactions: $transactions, changeView: changeView)
-                        case "dca":
-                            DCAView(dcaSettings: $dcaSettings, changeView: changeView)
-                        case "card":
-                            CardView()
-                        case "history":
-                            TransactionHistoryView(transactions: transactions, changeView: changeView)
-                        default:
-                            HomeView(balances: $balances, roundUpTotal: $roundUpTotal, transactions: $transactions, prices: prices, simulatePurchase: simulatePurchase, changeView: changeView)
-                        }
+                        currentScreen
                     }
                     .padding(16)
-                    .padding(.bottom, 80)
+                    .padding(.bottom, 24)
+                }
+                .refreshable {
+                    await store.refreshPrices()
                 }
 
-                BottomNavView(currentView: $currentView)
+                BottomNavView(current: $screen)
             }
+        }
+        .task {
+            await store.keepPricesFresh()
+        }
+        .sheet(item: $sheet) { sheet in
+            sheetContent(sheet)
+                .environment(store)
+                .environment(lock)
+                .preferredColorScheme(.dark)
+        }
+        .alert("CrypToad", isPresented: alertIsPresented) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(store.alertMessage ?? "")
         }
     }
 
-    func changeView(to view: String) {
-        currentView = view
+    @ViewBuilder
+    private var currentScreen: some View {
+        switch screen {
+        case .home:
+            HomeView(navigate: navigate, present: present)
+        case .invest:
+            DCAView(navigate: navigate, present: present)
+        case .card:
+            CardView()
+        case .roundUp:
+            RoundUpView(navigate: navigate, present: present)
+        case .history:
+            TransactionHistoryView(navigate: navigate)
+        }
     }
 
-    /// Simulates a card purchase and its round-up so the flow can be demoed without a card issuer.
-    func simulatePurchase() {
-        let merchants = ["Whole Foods", "Gas Station", "Target", "Restaurant"]
-        let merchant = merchants.randomElement()!
-        let amount = Double.random(in: 5...55)
-        let roundUp = ceil(amount) - amount
+    @ViewBuilder
+    private func sheetContent(_ sheet: ActiveSheet) -> some View {
+        switch sheet {
+        case .settings:
+            SettingsSheet()
+        case .trade:
+            TradeSheet()
+        case .roundUpAllocation:
+            AllocationEditorSheet(title: "Round-Up Allocation", initial: store.state.roundUps.allocation) {
+                store.setRoundUpAllocation($0)
+            }
+        case .dcaAllocation:
+            AllocationEditorSheet(title: "DCA Allocation", initial: store.state.dca.allocation) {
+                store.setDCAAllocation($0)
+            }
+        case .dcaSchedule:
+            DCAScheduleSheet()
+        }
+    }
 
-        let newTransaction = Transaction(
-            id: transactions.count + 1,
-            type: .purchase,
-            merchant: merchant,
-            recipient: nil,
-            amount: amount,
-            roundUp: roundUp,
-            date: Date().formatted(.dateTime.year().month().day()),
-            crypto: "BTC"
+    private func navigate(to screen: Screen) {
+        withAnimation(.easeInOut(duration: 0.15)) { self.screen = screen }
+    }
+
+    private func present(_ sheet: ActiveSheet) {
+        self.sheet = sheet
+    }
+
+    private var alertIsPresented: Binding<Bool> {
+        Binding(
+            get: { store.alertMessage != nil },
+            set: { if !$0 { store.alertMessage = nil } }
         )
-
-        transactions.insert(newTransaction, at: 0)
-        roundUpTotal += roundUp
-        balances.usdc -= amount
     }
 }
 
 #Preview {
     ContentView()
+        .environment(PortfolioStore.preview())
+        .environment(AppLock())
 }

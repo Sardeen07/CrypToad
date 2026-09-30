@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct HeaderView: View {
+    let onSettings: () -> Void
+
     var body: some View {
         HStack {
             HStack(spacing: 8) {
@@ -20,11 +22,12 @@ struct HeaderView: View {
 
             Spacer()
 
-            Button(action: {}) {
+            Button(action: onSettings) {
                 Image(systemName: "gearshape")
                     .font(.title2)
                     .foregroundColor(.gray)
             }
+            .accessibilityLabel("Settings")
         }
         .padding()
         .background(Color(red: 0.16, green: 0.16, blue: 0.18))
