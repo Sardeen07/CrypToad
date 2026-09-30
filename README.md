@@ -4,8 +4,10 @@
 
 **A crypto-linked debit card app concept — turn paychecks into crypto, spend it anywhere, and invest your spare change.**
 
+[![CI](https://github.com/Sardeen07/CrypToad/actions/workflows/ci.yml/badge.svg)](https://github.com/Sardeen07/CrypToad/actions/workflows/ci.yml)
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange?logo=swift)
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-iOS%2017-blue?logo=apple)
+![FastAPI](https://img.shields.io/badge/FastAPI-PostgreSQL-009688?logo=fastapi)
 ![Status](https://img.shields.io/badge/status-prototype-yellow)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -16,56 +18,71 @@
 ## Overview
 
 CrypToad is an iOS app concept that connects everyday spending with
-cryptocurrency investing. The idea: your paycheck lands in USDC (a
-dollar-pegged stablecoin), you spend it with a debit card that converts
-crypto to fiat at checkout, and every purchase is rounded up with the spare
-change invested into BTC, ETH, or USDC.
+cryptocurrency investing. Your paycheck lands in USDC (a dollar-pegged
+stablecoin), you spend it with a debit card, and every purchase is rounded up
+with the spare change invested into BTC, ETH, or USDC.
 
-This repository contains a **working SwiftUI prototype** of the core user
-experience, plus the product design, API spec, and security architecture
-for the full platform.
+The repo has three parts:
 
-> ⚠️ **Prototype status:** The app runs on mock data. There is no backend,
-> no real card, no real crypto, and no bank connection yet. See
+| Part | What it is |
+|---|---|
+| [`CrypToad/`](CrypToad) | SwiftUI iOS app |
+| [`CrypToadCore/`](CrypToadCore) | Swift package with all the money logic, fully unit-tested |
+| [`backend/`](backend) | FastAPI + PostgreSQL trading API with a double-entry ledger |
+
+> ⚠️ **Prototype:** market prices are real (CoinGecko), but balances, the card,
+> and trades are simulated. No real money or crypto moves. See
 > [What's built vs. planned](#whats-built-vs-planned).
 
+<!-- Add screenshots with ./scripts/screenshot.sh, then uncomment:
+<p align="center">
+  <img src="docs/screenshots/home.png" width="200">
+  <img src="docs/screenshots/roundup.png" width="200">
+  <img src="docs/screenshots/dca.png" width="200">
+  <img src="docs/screenshots/trade.png" width="200">
+</p>
+-->
 
-### Built (prototype)
+## Features
 
-- **Portfolio dashboard** — total portfolio value and holdings for USDC, BTC, and ETH, calculated from balances and prices
-- **Round-up investing** — simulate a card purchase and watch the spare change get calculated and added to your round-up total
-- **Round-up controls** — enable/pause toggle, allocation breakdown (BTC / ETH / USDC), and round-up history
-- **Dollar-cost averaging (DCA)** — recurring investment settings with preset strategies (Balanced Growth, Aggressive Bitcoin, Stablecoin Saver)
-- **Debit card screen** — card design with Apple Wallet, freeze, and PIN controls (UI only)
-- **Transaction history** — purchases, paycheck deposits, DCA buys, and P2P transfers
+- **Live portfolio** — BTC/ETH prices and 24h change from CoinGecko, refreshed every minute and on pull-to-refresh, with offline fallback to the last known prices
+- **Round-up investing** — every card purchase rounds up to the next dollar; the spare change actually buys BTC/ETH at live prices, split by your allocation. Optional 2×/3×/5× multiplier
+- **Allocation editor** — sliders that always total 100%, plus presets (Balanced, Aggressive Bitcoin, Stablecoin Saver)
+- **Dollar-cost averaging** — set amount and frequency; scheduled buys run automatically, including ones missed while the app was closed
+- **Buy BTC / ETH with USDC** — live quote with a 1% fee breakdown before you confirm
+- **Card controls** — freeze the card (blocks purchases) and reveal the PIN behind Face ID
+- **Face ID app lock** — locks when the app leaves the screen
+- **Saved locally** — everything persists between launches
+- **Transaction history** — filter by spending, investing, or deposits
 
-### Planned
+## Engineering highlights
 
-- Payroll direct-deposit conversion into USDC
-- Real-time crypto → fiat conversion at checkout
-- Apple Wallet provisioning via PassKit
-- Peer-to-peer crypto transfers
-- USDC → BTC/ETH trading through a liquidity provider
-- Secure authentication with MFA and Face ID
-- Backend API with a double-entry ledger
+- **Money is `Decimal`, never `Double`.** Floating point can't represent values like $0.10 exactly. `Decimal.exact("47.89")` avoids even the float-literal trap (`let x: Decimal = 47.89` is actually 47.89000000000000512).
+- **No lost cents.** Splitting $0.75 across 50/30/20 rounds each share down, then gives leftover cents to the largest weight, so shares always add up exactly. A test checks this for thousands of amounts.
+- **Failed operations change nothing.** Ledger operations validate funds, prices, and card state *before* touching balances. The store applies them to a copy and only commits on success.
+- **Logic is separate from UI.** `CrypToadCore` has no SwiftUI dependency, so the same tests run on macOS and Linux in CI.
+- **Double-entry backend.** Every trade is a journal entry that nets to zero per asset; amounts are stored as integer minor units; row locks, single-use quotes, and idempotency keys prevent double spending. See [`backend/README.md`](backend/README.md).
 
 ## What's built vs. planned
 
 | Area | Status |
 |---|---|
-| SwiftUI app shell, navigation, all screens | ✅ Built |
-| Round-up calculation logic | ✅ Built (local, mock data) |
-| Portfolio valuation | ✅ Built (static prices) |
-| Live market prices | 🔲 Planned |
-| Backend API + PostgreSQL ledger | 🔲 Planned — see [`docs/api-spec.md`](docs/api-spec.md) |
-| Authentication, MFA, biometrics | 🔲 Planned — see [`docs/security.md`](docs/security.md) |
-| Card issuing, bank linking, crypto custody | 🔲 Planned — requires licensed partners |
+| SwiftUI app: home, round-ups, DCA, card, history, trade, settings | ✅ Built |
+| Round-up, allocation, DCA, and trade logic (`CrypToadCore`) | ✅ Built + tested |
+| Live market prices (CoinGecko) | ✅ Built |
+| Local persistence | ✅ Built |
+| Face ID / Touch ID lock | ✅ Built |
+| Backend API: quote, trade, history, PostgreSQL ledger | ✅ Built + tested |
+| CI (GitHub Actions) | ✅ Built |
+| App ↔ backend connection | 🔲 Next up |
+| Bank linking, KYC, card issuing, crypto custody | 🔲 Planned — requires licensed partners |
 
 ## Tech Stack
 
-**Current:** Swift, SwiftUI, iOS 17
-
-**Planned:** PostgreSQL (double-entry ledger), Redis (quote caching and job queue), Firebase / APNs (push notifications), PassKit (Apple Wallet), Plaid (bank linking), a crypto liquidity/custody provider, and a card-issuing partner.
+**iOS:** Swift, SwiftUI, Observation (`@Observable`), async/await, LocalAuthentication, XcodeGen
+**Core:** Swift package, XCTest
+**Backend:** Python 3.12, FastAPI, SQLAlchemy 2, PostgreSQL, pytest, Docker
+**Data:** CoinGecko public API
 
 ## Getting Started
 
@@ -74,7 +91,7 @@ for the full platform.
 - macOS with **Xcode 15** or later
 - iOS 17 simulator or device
 
-### Option A — XcodeGen (recommended)
+### Run the app
 
 ```bash
 brew install xcodegen
@@ -84,84 +101,81 @@ xcodegen generate
 open CrypToad.xcodeproj
 ```
 
-Then pick an iPhone simulator and press **⌘R**.
+Pick an iPhone simulator and press **⌘R**.
 
-### Option B — Manual
+> Face ID in the simulator: **Features → Face ID → Enrolled**, then
+> **Features → Face ID → Matching Face** when prompted.
 
-1. In Xcode, create a new **iOS App** project named `CrypToad` (SwiftUI interface).
-2. Delete the generated `ContentView.swift` and `CrypToadApp.swift`.
-3. Drag the `CrypToad/` source folder from this repo into the project.
-4. Build and run.
+### Run the tests
+
+```bash
+swift test --package-path CrypToadCore     # Swift logic (macOS or Linux)
+cd backend && pip install -r requirements-dev.txt && pytest   # API
+```
+
+### Run the backend
+
+```bash
+cd backend
+docker compose up --build
+open http://localhost:8000/docs
+```
 
 ### Try it
 
-On the Home tab, tap **Simulate Purchase**. A random purchase is added to
-your activity, the round-up is calculated (e.g. $4.25 → $0.75), and your
-round-up total updates.
+- **Home → Simulate Purchase** adds a random card purchase and invests its round-up at live prices.
+- **Home → Buy BTC / ETH** shows a live quote with the fee before you confirm.
+- **Round-Up → Customize Allocation** opens the sliders.
+- **Invest → Buy Now** runs a DCA buy; **Edit Schedule** changes amount and frequency.
+- **Card → Freeze Card**, then try a purchase.
+- **⚙️ → Require Face ID**, then background the app.
 
 ## Project Structure
 
 ```
 CrypToad/
-├── CrypToad/
+├── CrypToad/                      # iOS app
 │   ├── App/
-│   │   └── CrypToadApp.swift          # App entry point
-│   ├── Models/
-│   │   ├── Balance.swift
-│   │   ├── Transaction.swift
-│   │   └── DCASettings.swift
+│   │   ├── CrypToadApp.swift      # Entry point, dependency setup
+│   │   ├── PortfolioStore.swift   # @Observable store: prices, actions, persistence
+│   │   └── AppLock.swift          # Face ID / Touch ID
+│   ├── Support/                   # Theme + formatting
 │   └── Views/
-│       ├── ContentView.swift          # Root state + screen routing
-│       ├── Screens/
-│       │   ├── HomeView.swift
-│       │   ├── RoundUpView.swift
-│       │   ├── DCAView.swift
-│       │   ├── CardView.swift
-│       │   └── TransactionHistoryView.swift
+│       ├── RootView.swift         # Lock screen overlay
+│       ├── ContentView.swift      # Navigation + sheets
+│       ├── Screens/               # Home, Round-Up, DCA, Card, History
+│       ├── Sheets/                # Trade, Allocation editor, DCA schedule, Settings
 │       └── Components/
-│           ├── HeaderView.swift
-│           ├── BottomNavView.swift
-│           ├── BalanceRow.swift
-│           ├── TransactionRow.swift
-│           ├── AllocationBar.swift
-│           ├── StrategyCard.swift
-│           └── SettingsButton.swift
-├── docs/
-│   ├── architecture.md                # Planned system design
-│   ├── api-spec.md                    # Planned trading API
-│   ├── security.md                    # Planned auth + data security
-│   ├── roadmap.md                     # MVP phases
-│   └── screenshots/
-├── project.yml                        # XcodeGen spec
-├── SECURITY.md
-└── LICENSE
+├── CrypToadCore/                  # Swift package (no UI)
+│   ├── Sources/CrypToadCore/
+│   │   ├── Money.swift            # Decimal helpers
+│   │   ├── RoundUp.swift
+│   │   ├── Allocation.swift       # Splitting + slider rebalancing
+│   │   ├── PortfolioState.swift   # Ledger: purchases, DCA, trades, valuation
+│   │   ├── Trading.swift          # Quotes + fees
+│   │   ├── Prices.swift / CoinGeckoPriceService.swift
+│   │   └── Persistence.swift
+│   └── Tests/CrypToadCoreTests/
+├── backend/                       # FastAPI + PostgreSQL
+├── docs/                          # Architecture, API spec, security, roadmap
+├── scripts/screenshot.sh
+└── project.yml                    # XcodeGen spec
 ```
 
 ## How Round-Ups Work
 
-1. User buys a coffee for **$4.25** with the CrypToad card.
+1. You buy a coffee for **$4.25** with the CrypToad card.
 2. The purchase rounds up to **$5.00**.
-3. The **$0.75** difference is set aside for investing.
-4. It's split according to the user's allocation (e.g. 50% BTC / 30% ETH / 20% USDC).
+3. The **$0.75** difference is split by your allocation: 50/30/20 → $0.38 BTC, $0.22 ETH, $0.15 USDC.
+4. The BTC and ETH shares are bought at the current price (e.g. $0.38 ÷ $92,340 = 0.00000411 BTC).
 5. In production, round-ups would be batched daily or weekly to reduce fees.
 
 ## Documentation
 
 - [Architecture](docs/architecture.md)
-- [API Specification](docs/api-spec.md)
+- [API Specification](docs/api-spec.md) · [Backend README](backend/README.md)
 - [Security Design](docs/security.md)
 - [Roadmap](docs/roadmap.md)
-
-## Roadmap
-
-- [x] SwiftUI prototype of core screens
-- [x] Local round-up calculation
-- [ ] Refactor state into an `ObservableObject` view model
-- [ ] Live prices from a public market-data API
-- [ ] Editable allocation and DCA settings
-- [ ] Backend API (quote, trade, history) with PostgreSQL ledger
-- [ ] Authentication with Face ID
-- [ ] Unit tests for round-up and allocation logic
 
 ## Disclaimer
 
@@ -169,7 +183,7 @@ CrypToad is a personal/educational project. It is not a licensed financial
 product, does not hold or move real funds, and nothing in it is financial
 advice. A production version would require money transmitter licensing,
 KYC/AML compliance, and partnerships with a licensed card issuer and crypto
-custodian.
+custodian. Price data provided by [CoinGecko](https://www.coingecko.com).
 
 ## Author
 

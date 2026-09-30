@@ -1,8 +1,10 @@
-# Trading API Specification (Planned)
+# Trading API Specification
 
-> Status: design document. Not implemented.
+> Status: **implemented** as a prototype in [`backend/`](../backend/README.md) (FastAPI + PostgreSQL).
+> Differences from this design: auth uses bearer API tokens instead of JWTs, quotes are cached in
+> Postgres instead of Redis, and history uses the authenticated user instead of a `userId` parameter.
 
-All endpoints require an authenticated session (short-lived JWT).
+All endpoints require an authenticated session.
 
 ---
 

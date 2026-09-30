@@ -1,8 +1,15 @@
-# Architecture (Planned)
+# Architecture
 
-> Status: design document. The current repository contains only the iOS
-> client prototype with mock data. Everything below describes the intended
-> production system.
+> Status: partly built. The repository now has three pieces:
+>
+> - **iOS app** (`CrypToad/`) — SwiftUI views and an `@Observable` store
+> - **CrypToadCore** (`CrypToadCore/`) — a Swift package with all money logic: `Decimal` math,
+>   allocations, round-ups, DCA scheduling, the local ledger, persistence, and CoinGecko price decoding.
+>   No UI code, so it's unit-tested on macOS and Linux.
+> - **Backend** (`backend/`) — FastAPI quote/trade/history API with a PostgreSQL double-entry ledger.
+>
+> Partner integrations (bank linking, KYC, custody, card issuing) remain design-only; they need a
+> licensed company behind them. The app does not call the backend yet.
 
 ## System Overview
 

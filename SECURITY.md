@@ -1,8 +1,9 @@
 # Security Policy
 
-CrypToad is currently a **UI prototype**. It does not handle real money, real
-cryptocurrency, real card numbers, or real user accounts. All balances,
-prices, and transactions in the app are mock data.
+CrypToad is a **prototype**. It does not handle real money, real
+cryptocurrency, real card numbers, or real user accounts. Balances and
+transactions are simulated; market prices are real (CoinGecko) but no
+trades reach a real exchange.
 
 ## Reporting a vulnerability
 
@@ -14,4 +15,6 @@ rather than a public issue.
 
 The intended production security design (Argon2id password hashing, MFA,
 Secure Enclave biometrics, encryption at rest, audit logging) is documented
-in [`docs/security.md`](docs/security.md). None of it is implemented yet.
+in [`docs/security.md`](docs/security.md). Implemented so far: the Face ID app
+lock in the iOS app, and hashed API tokens, row locking, idempotency keys, and
+an append-only audit log in the backend prototype.

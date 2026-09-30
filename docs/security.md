@@ -1,6 +1,8 @@
-# Security Design (Planned)
+# Security Design
 
-> Status: design document. Not implemented in the current prototype.
+> Status: mostly a design document. Implemented so far: Face ID / Touch ID app lock and PIN reveal
+> (LocalAuthentication, iOS app), and hashed bearer tokens, row locking, idempotency keys, and an
+> append-only audit log (backend).
 
 ## Passwords
 - Minimum 12 characters, mixed case, number, and symbol.
