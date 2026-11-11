@@ -33,7 +33,7 @@ struct ContentView: View {
                     .padding(.bottom, 24)
                 }
                 .refreshable {
-                    await store.refreshPrices()
+                    await store.refreshAll()
                 }
 
                 BottomNavView(current: $screen)

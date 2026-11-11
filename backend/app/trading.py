@@ -14,11 +14,12 @@ from sqlalchemy.orm import Session
 from app import ledger
 from app.assets import BASE_ASSET, TRADEABLE, Asset, cents, cents_up, from_minor, to_minor
 from app.config import Settings
-from app.models import AuditEvent, Quote, Trade, User, as_utc, utcnow
+from app.errors import ApiError
+from app.models import AuditEvent, Deposit, Quote, Trade, User, as_utc, utcnow
 from app.pricing import PriceProvider
 
 
-class TradingError(Exception):
+class TradingError(ApiError):
     status_code = 400
     code = "trading_error"
 
@@ -53,6 +54,15 @@ class KycRequiredError(TradingError):
 
 class InsufficientFundsError(TradingError):
     code = "insufficient_funds"
+
+
+class InvalidAllocationError(TradingError):
+    code = "invalid_allocation"
+
+
+def require_kyc(user: User) -> None:
+    if user.kyc_status != "verified":
+        raise KycRequiredError("Identity verification is required before investing")
 
 
 def audit(session: Session, user: User | None, action: str, detail: dict, flagged: bool = False) -> None:
@@ -132,8 +142,7 @@ def execute_trade(
         raise QuoteAlreadyUsedError("Quote has already been used")
     if as_utc(quote.expires_at) < now:
         raise QuoteExpiredError("Quote expired; request a new one")
-    if user.kyc_status != "verified":
-        raise KycRequiredError("Identity verification is required before trading")
+    require_kyc(user)
 
     to_asset = Asset(quote.to_asset)
     # Lock the paying wallet so concurrent requests for the same user run one at a time.
@@ -198,22 +207,25 @@ def trade_history(session: Session, user: User, limit: int = 50) -> list[Trade]:
 # MARK: Deposits + balances
 
 
-def deposit(session: Session, user: User, amount: Decimal, memo: str = "Paycheck deposit") -> None:
+def deposit(session: Session, user: User, amount: Decimal, title: str = "Paycheck Deposit") -> Deposit:
     value = cents(amount)
     if value <= 0:
         raise InvalidAmountError("Deposit must be positive")
     minor = to_minor(value, BASE_ASSET)
-    ledger.post(
+    entry = ledger.post(
         session,
         kind="deposit",
-        memo=memo,
+        memo=title,
         lines=[
             ledger.Line(ledger.get_account(session, kind="external", asset=BASE_ASSET), -minor),
             ledger.Line(ledger.wallet(session, user.id, BASE_ASSET), minor),
         ],
     )
+    record = Deposit(user_id=user.id, entry_id=entry.id, amount_minor=minor, title=title[:100])
+    session.add(record)
     audit(session, user, "deposit.received", {"amount": str(value)})
     session.commit()
+    return record
 
 
 def balances(session: Session, user: User) -> dict[Asset, Decimal]:

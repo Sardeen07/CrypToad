@@ -22,9 +22,13 @@ struct HomeView: View {
             LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Total Portfolio Value")
-                    .font(.subheadline)
-                    .opacity(0.8)
+                HStack {
+                    Text("Total Portfolio Value")
+                        .font(.subheadline)
+                        .opacity(0.8)
+                    Spacer()
+                    AccountModeBadge()
+                }
 
                 Text(store.totalValue.usd)
                     .font(.system(size: 40, weight: .bold))
@@ -96,7 +100,13 @@ struct HomeView: View {
                     store.simulatePaycheck()
                 }
             }
+            if store.bank.linked {
+                QuickActionButton(icon: "building.columns", title: "Round Up Bank Purchases", color: .teal) {
+                    Task { await store.syncBank() }
+                }
+            }
         }
+        .disabled(store.isWorking)
     }
 
     private var recentActivity: some View {
@@ -143,6 +153,20 @@ struct QuickActionButton: View {
             .background(color)
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
+    }
+}
+
+/// "Synced" when signed in to the server, "On-device demo" otherwise.
+struct AccountModeBadge: View {
+    @Environment(PortfolioStore.self) private var store
+
+    var body: some View {
+        Label(store.isSignedIn ? "Synced" : "On-device demo", systemImage: store.isSignedIn ? "icloud.fill" : "iphone")
+            .font(.caption2)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.black.opacity(0.25))
+            .clipShape(Capsule())
     }
 }
 

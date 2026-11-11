@@ -1,6 +1,7 @@
 # Trading API Specification
 
-> Status: **implemented** as a prototype in [`backend/`](../backend/README.md) (FastAPI + PostgreSQL).
+> Status: **implemented** as a prototype in [`backend/`](../backend/README.md) (FastAPI + PostgreSQL),
+> along with accounts, round-ups, DCA, and bank-linking endpoints listed there.
 > Differences from this design: auth uses bearer API tokens instead of JWTs, quotes are cached in
 > Postgres instead of Redis, and history uses the authenticated user instead of a `userId` parameter.
 

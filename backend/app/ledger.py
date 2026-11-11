@@ -72,11 +72,19 @@ def post(session: Session, *, kind: str, memo: str, lines: list[Line]) -> Journa
     if unbalanced:
         raise UnbalancedEntryError(f"Entry does not balance: {unbalanced}")
 
+    # Net the lines per wallet first: an entry can debit the same wallet more than once
+    # (a purchase plus its round-up), and each debit alone might fit while the total doesn't.
+    net_by_wallet: dict[int, int] = defaultdict(int)
+    wallets: dict[int, LedgerAccount] = {}
     for line in lines:
-        if line.account.kind == "user_wallet" and line.amount_minor < 0:
-            available = balance_minor(session, line.account)
-            if available + line.amount_minor < 0:
-                raise InsufficientFundsError(-line.amount_minor, available, Asset(line.account.asset))
+        if line.account.kind == "user_wallet":
+            net_by_wallet[line.account.id] += line.amount_minor
+            wallets[line.account.id] = line.account
+    for account_id, net in net_by_wallet.items():
+        if net < 0:
+            available = balance_minor(session, wallets[account_id])
+            if available + net < 0:
+                raise InsufficientFundsError(-net, available, Asset(wallets[account_id].asset))
 
     entry = JournalEntry(kind=kind, memo=memo)
     entry.postings = [

@@ -6,7 +6,8 @@ struct CrypToadApp: App {
     @State private var lock: AppLock
 
     init() {
-        let store = PortfolioStore.live()
+        // UI tests launch with -ui-testing: fresh in-memory data and fixed prices, no saved session.
+        let store = ProcessInfo.processInfo.arguments.contains("-ui-testing") ? PortfolioStore.uiTesting() : PortfolioStore.live()
         _store = State(initialValue: store)
         // Start locked if the user turned on Face ID, so content never flashes before auth.
         _lock = State(initialValue: AppLock(startLocked: store.state.requireBiometricUnlock))

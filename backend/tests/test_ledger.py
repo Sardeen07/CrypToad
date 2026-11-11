@@ -13,7 +13,7 @@ from app.pricing import CoinGeckoPriceProvider, PriceUnavailableError
 @pytest.fixture
 def session(database: Database):
     with database.session_factory() as session:
-        session.add(User(email="a@example.com", token_hash="x"))
+        session.add(User(email="a@example.com"))
         session.commit()
         yield session
 
@@ -50,13 +50,32 @@ def test_balances_are_sums_of_postings(session) -> None:
     assert ledger.trial_balance(session) == {"USDC": 0}
 
 
-def test_coingecko_provider_parses_exact_decimal() -> None:
+def test_wallet_debits_are_netted_before_the_funds_check(session) -> None:
+    """A purchase plus its round-up debits one wallet twice; each debit fits alone, the total doesn't."""
+    wallet = ledger.wallet(session, 1, Asset.USDC)
+    external = ledger.get_account(session, kind="external", asset=Asset.USDC)
+    merchant = ledger.get_account(session, kind="merchant", asset=Asset.USDC)
+    ledger.post(session, kind="deposit", memo="pay", lines=[ledger.Line(external, -430), ledger.Line(wallet, 430)])
+    with pytest.raises(ledger.InsufficientFundsError):
+        ledger.post(
+            session, kind="purchase", memo="coffee + round-up",
+            lines=[ledger.Line(wallet, -425), ledger.Line(wallet, -75), ledger.Line(merchant, 500)],
+        )
+    assert ledger.balance_minor(session, wallet) == 430
+
+
+def test_coingecko_provider_parses_exact_decimal_and_caches() -> None:
+    calls = []
+
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.params["ids"] == "bitcoin"
-        return httpx.Response(200, text='{"bitcoin": {"usd": 92340.12}}')
+        calls.append(request)
+        assert set(request.url.params["ids"].split(",")) == {"bitcoin", "ethereum", "usd-coin"}
+        return httpx.Response(200, text='{"bitcoin": {"usd": 92340.12}, "ethereum": {"usd": 3120.5}, "usd-coin": {"usd": 1}}')
 
     provider = CoinGeckoPriceProvider(client=httpx.Client(transport=httpx.MockTransport(handler)))
     assert provider.price_usd(Asset.BTC) == Decimal("92340.12")
+    assert provider.price_usd(Asset.ETH) == Decimal("3120.5")
+    assert len(calls) == 1  # one request for every asset, then served from cache
 
 
 def test_coingecko_provider_errors_become_price_unavailable() -> None:

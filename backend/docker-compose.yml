@@ -20,10 +20,18 @@ services:
 
   api:
     build: .
+    env_file:
+      - path: .env
+        required: false
     environment:
       CRYPTOAD_DATABASE_URL: postgresql+psycopg://cryptoad:cryptoad@db:5432/cryptoad
       CRYPTOAD_PRICE_SOURCE: coingecko
       CRYPTOAD_ENABLE_DEV_ENDPOINTS: "true"
+      CRYPTOAD_SECRET_KEY: local-development-only-secret
+      # Bank linking: copy your Plaid Sandbox keys into backend/.env (never commit them).
+      CRYPTOAD_PLAID_CLIENT_ID: ${CRYPTOAD_PLAID_CLIENT_ID:-}
+      CRYPTOAD_PLAID_SECRET: ${CRYPTOAD_PLAID_SECRET:-}
+      CRYPTOAD_PLAID_ENV: sandbox
     ports:
       - "8000:8000"
     depends_on:
