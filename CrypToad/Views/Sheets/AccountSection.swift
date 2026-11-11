@@ -6,6 +6,7 @@ import CrypToadCore
 /// Settings → Account: sign in (Apple or demo), server address, sign out, delete account.
 struct AccountSection: View {
     @Environment(PortfolioStore.self) private var store
+    @Environment(\.colorScheme) private var colorScheme
     /// A reference type so the nonce set in the request closure is the one read on completion.
     @State private var nonce = NonceHolder()
     @State private var confirmDelete = false
@@ -31,7 +32,7 @@ struct AccountSection: View {
             } onCompletion: { result in
                 handleApple(result)
             }
-            .signInWithAppleButtonStyle(.white)
+            .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
             .frame(height: 44)
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
 

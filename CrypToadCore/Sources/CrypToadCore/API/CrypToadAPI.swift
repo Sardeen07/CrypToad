@@ -475,11 +475,12 @@ private struct ActivityDTO: Decodable {
             id: UUID(uuidString: id) ?? UUID(),
             kind: kind,
             date: date,
-            title: skipped ? "\(title) (round-up skipped)" : title,
+            title: title,
             amountUSD: try Decimal(api: amount),
             roundUpUSD: skipped ? 0 : try Decimal(api: roundUp),
             feeUSD: try Decimal(api: fee),
-            fills: skipped ? [] : fills
+            fills: skipped ? [] : fills,
+            roundUpSkipped: skipped ? true : nil
         )
     }
 }

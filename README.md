@@ -40,9 +40,10 @@ and the app shows the server's balances and history.
 > [What's built vs. planned](#whats-built-vs-planned).
 
 <p align="center">
-  <img src="docs/screenshots/home.png" width="230" alt="Home: portfolio synced with the server">
-  <img src="docs/screenshots/trade.png" width="230" alt="Buying Bitcoin at a rate-locked server quote">
-  <img src="docs/screenshots/account.png" width="230" alt="Settings: signed in, bank linking">
+  <img src="docs/screenshots/home.png" width="200" alt="Home: balance, holdings, this month, recent activity">
+  <img src="docs/screenshots/activity.png" width="200" alt="Activity grouped by day">
+  <img src="docs/screenshots/trade.png" width="200" alt="Buying Bitcoin at a rate-locked server quote">
+  <img src="docs/screenshots/home-dark.png" width="200" alt="Home in dark mode">
 </p>
 
 ## Features
@@ -69,6 +70,7 @@ and the app shows the server's balances and history.
 - **Logic is separate from UI.** `CrypToadCore` has no SwiftUI dependency, so the same tests run on macOS and Linux in CI.
 - **Double-entry backend.** Every trade is a journal entry that nets to zero per asset; amounts are stored as integer minor units; row locks, single-use quotes, and idempotency keys prevent double spending. See [`backend/README.md`](backend/README.md).
 - **Retries can't double-buy.** Trades use the quote id as the idempotency key; scheduled DCA buys use their schedule date, so a retry, a crash, or a second device never buys twice. Bank round-ups are keyed by Plaid's transaction id.
+- **A real design system.** Colors, type, spacing, radii, and components are tokens in [`Theme.swift`](CrypToad/Support/Theme.swift) ([design notes](docs/design.md)): native light/dark mode, one brand color, financial colors reserved for meaning, WCAG AA contrast, Dynamic Type up to accessibility sizes, and an iPad layout. A UI test tours every screen in light, dark, and large text.
 - **Secrets stay secret.** Session tokens are stored only as SHA-256 hashes on the server and in the Keychain on the device; Plaid access tokens are encrypted at rest.
 
 ## What's built vs. planned
@@ -197,7 +199,7 @@ CrypToad/
 │   │   ├── Persistence.swift
 │   │   └── API/                   # CrypToadAPI client + server models
 │   └── Tests/CrypToadCoreTests/
-├── CrypToadUITests/               # End-to-end UI test against a running backend
+├── CrypToadUITests/               # End-to-end test against a running backend + screen tour
 ├── backend/                       # FastAPI + PostgreSQL
 ├── docs/                          # Architecture, API spec, security, roadmap
 ├── scripts/screenshot.sh

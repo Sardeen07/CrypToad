@@ -34,7 +34,7 @@ final class ServerFlowUITests: XCTestCase {
         snapshot("2-home-synced")
 
         // A card swipe goes to the server and comes back with its round-up.
-        element("Simulate Purchase").tap()
+        app.buttons["Simulate purchase"].tap()
         let merchants = ["Whole Foods", "Shell", "Target", "Chipotle", "Starbucks", "Trader Joe's", "Apple Store", "Uber"]
         let purchase = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label MATCHES %@", ".*(\(merchants.joined(separator: "|"))).*"))
@@ -42,7 +42,7 @@ final class ServerFlowUITests: XCTestCase {
         XCTAssertTrue(purchase.waitForExistence(timeout: 10), "the purchase should appear in recent activity")
 
         // Buy BTC at a rate-locked server quote.
-        element("Buy BTC / ETH").tap()
+        app.buttons["Buy"].firstMatch.tap()
         XCTAssertTrue(element("Rate locked by the server").waitForExistence(timeout: 10), "server quote should load")
         snapshot("3-trade-server-quote")
         app.navigationBars.buttons["Buy"].tap()

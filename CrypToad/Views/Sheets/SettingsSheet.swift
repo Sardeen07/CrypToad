@@ -20,7 +20,7 @@ struct SettingsSheet: View {
                     if let error = lock.lastError {
                         Text(error)
                             .font(.caption)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Theme.negative)
                     }
                 } header: {
                     Text("Security")

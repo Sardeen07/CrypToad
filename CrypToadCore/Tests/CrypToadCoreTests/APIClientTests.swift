@@ -107,8 +107,10 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(coffee.date.timeIntervalSince1970, 1_794_418_361.123, accuracy: 0.01)
 
         let uber = records[1]
-        XCTAssertEqual(uber.title, "Uber (round-up skipped)")
+        XCTAssertEqual(uber.title, "Uber")
+        XCTAssertEqual(uber.roundUpSkipped, true)
         XCTAssertEqual(uber.roundUpUSD, 0)
+        XCTAssertNil(coffee.roundUpSkipped)
     }
 
     // MARK: Trading

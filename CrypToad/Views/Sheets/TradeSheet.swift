@@ -86,7 +86,7 @@ struct TradeSheet: View {
                 if let message = validationMessage ?? quoteError {
                     Section {
                         Text(message)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Theme.negative)
                     }
                 }
             }
