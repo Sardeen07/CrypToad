@@ -24,6 +24,7 @@ Carthage/Build/
 # Secrets — never commit keys
 *.env
 .env*
+!.env.example
 Secrets.swift
 GoogleService-Info.plist
 

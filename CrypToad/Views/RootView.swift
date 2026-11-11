@@ -15,7 +15,7 @@ struct RootView: View {
                     .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: lock.isLocked)
+        .animation(Theme.quick, value: lock.isLocked)
         .onChange(of: scenePhase) { _, phase in
             // Re-lock whenever the app leaves the foreground.
             if phase == .background && store.state.requireBiometricUnlock {
@@ -30,36 +30,43 @@ struct LockView: View {
 
     var body: some View {
         ZStack {
-            Theme.background.ignoresSafeArea()
+            Theme.canvas.ignoresSafeArea()
 
-            VStack(spacing: 20) {
+            VStack(spacing: Theme.Space.xl) {
                 Text("🐸")
-                    .font(.system(size: 64))
-                Text("CrypToad is locked")
-                    .font(.title2.bold())
-                    .foregroundStyle(.white)
+                    .font(.system(size: 40))
+                    .frame(width: 72, height: 72)
+                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+                    .accessibilityHidden(true)
+
+                VStack(spacing: Theme.Space.s) {
+                    Text("CrypToad is locked")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                    Text("Unlock to see your balances.")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                }
 
                 Button {
                     Task { await lock.unlock() }
                 } label: {
                     Label("Unlock with \(lock.biometryName)", systemImage: lock.biometryIcon)
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: 260)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
+                .buttonStyle(.primary)
+                .frame(maxWidth: 280)
                 .disabled(lock.isAuthenticating)
 
                 if let error = lock.lastError {
                     Text(error)
-                        .font(.caption)
-                        .foregroundStyle(.red)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.negative)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }
             }
+            .padding(Theme.Space.xl)
         }
         .task {
             // Prompt automatically when the lock screen appears.

@@ -1,8 +1,8 @@
 import SwiftUI
 import CrypToadCore
 
-enum Screen: Hashable {
-    case home, invest, card, roundUp, history
+enum Tab: Hashable {
+    case home, invest, roundUps, card
 }
 
 enum ActiveSheet: String, Identifiable {
@@ -10,34 +10,50 @@ enum ActiveSheet: String, Identifiable {
     var id: String { rawValue }
 }
 
-/// App shell: header, the current screen, bottom navigation, and sheets.
+/// App shell: native tab bar, a navigation stack per tab, and the app's sheets and alerts.
 struct ContentView: View {
     @Environment(PortfolioStore.self) private var store
     @Environment(AppLock.self) private var lock
 
-    @State private var screen: Screen = .home
+    @State private var tab: Tab = .home
     @State private var sheet: ActiveSheet?
 
     var body: some View {
-        ZStack {
-            Theme.background.ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                HeaderView(onSettings: { sheet = .settings })
-
-                ScrollView {
-                    VStack(spacing: 16) {
-                        currentScreen
-                    }
-                    .padding(16)
-                    .padding(.bottom, 24)
-                }
-                .refreshable {
-                    await store.refreshPrices()
-                }
-
-                BottomNavView(current: $screen)
+        TabView(selection: $tab) {
+            NavigationStack {
+                HomeView(present: present)
+                    .navigationTitle("Portfolio")
+                    .settingsToolbar { present(.settings) }
             }
+            .tabItem { Label("Home", systemImage: "house") }
+            .tag(Tab.home)
+
+            NavigationStack {
+                DCAView(present: present)
+                    .navigationTitle("Invest")
+                    .adaptiveTitleDisplayMode()
+                    .settingsToolbar { present(.settings) }
+            }
+            .tabItem { Label("Invest", systemImage: "chart.line.uptrend.xyaxis") }
+            .tag(Tab.invest)
+
+            NavigationStack {
+                RoundUpView(present: present)
+                    .navigationTitle("Round-Ups")
+                    .adaptiveTitleDisplayMode()
+                    .settingsToolbar { present(.settings) }
+            }
+            .tabItem { Label("Round-Ups", systemImage: "arrow.up.circle") }
+            .tag(Tab.roundUps)
+
+            NavigationStack {
+                CardView()
+                    .navigationTitle("Card")
+                    .adaptiveTitleDisplayMode()
+                    .settingsToolbar { present(.settings) }
+            }
+            .tabItem { Label("Card", systemImage: "creditcard") }
+            .tag(Tab.card)
         }
         .task {
             await store.keepPricesFresh()
@@ -46,28 +62,12 @@ struct ContentView: View {
             sheetContent(sheet)
                 .environment(store)
                 .environment(lock)
-                .preferredColorScheme(.dark)
+                .tint(Theme.brand)
         }
         .alert("CrypToad", isPresented: alertIsPresented) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(store.alertMessage ?? "")
-        }
-    }
-
-    @ViewBuilder
-    private var currentScreen: some View {
-        switch screen {
-        case .home:
-            HomeView(navigate: navigate, present: present)
-        case .invest:
-            DCAView(navigate: navigate, present: present)
-        case .card:
-            CardView()
-        case .roundUp:
-            RoundUpView(navigate: navigate, present: present)
-        case .history:
-            TransactionHistoryView(navigate: navigate)
         }
     }
 
@@ -91,10 +91,6 @@ struct ContentView: View {
         }
     }
 
-    private func navigate(to screen: Screen) {
-        withAnimation(.easeInOut(duration: 0.15)) { self.screen = screen }
-    }
-
     private func present(_ sheet: ActiveSheet) {
         self.sheet = sheet
     }
@@ -111,4 +107,5 @@ struct ContentView: View {
     ContentView()
         .environment(PortfolioStore.preview())
         .environment(AppLock())
+        .tint(Theme.brand)
 }

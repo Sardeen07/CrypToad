@@ -1,10 +1,9 @@
 import SwiftUI
 import CrypToadCore
 
-/// Full transaction list with a type filter.
+/// Full account activity, grouped by day like a bank statement, with a type filter.
 struct TransactionHistoryView: View {
     @Environment(PortfolioStore.self) private var store
-    let navigate: (Screen) -> Void
 
     enum Filter: String, CaseIterable, Identifiable {
         case all = "All"
@@ -25,33 +24,63 @@ struct TransactionHistoryView: View {
 
     @State private var filter: Filter = .all
 
-    private var filtered: [TransactionRecord] {
-        store.state.transactions.filter(filter.includes)
+    /// Newest day first; within a day, newest first.
+    private var days: [(day: Date, transactions: [TransactionRecord])] {
+        let calendar = Calendar.current
+        let filtered = store.state.transactions.filter(filter.includes)
+        let grouped = Dictionary(grouping: filtered) { calendar.startOfDay(for: $0.date) }
+        return grouped
+            .map { (day: $0.key, transactions: $0.value.sorted { $0.date > $1.date }) }
+            .sorted { $0.day > $1.day }
     }
 
     var body: some View {
-        VStack(spacing: 24) {
-            BackButton { navigate(.home) }
+        ScreenScroll {
+            Picker("Filter", selection: $filter) {
+                ForEach(Filter.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
 
-            VStack(alignment: .leading, spacing: 12) {
-                SectionHeader(icon: "list.bullet", title: "All Transactions")
-
-                Picker("Filter", selection: $filter) {
-                    ForEach(Filter.allCases) { Text($0.rawValue).tag($0) }
+            if days.isEmpty {
+                CardSection {
+                    EmptyRow(text: filter == .all ? "No activity yet." : "No \(filter.rawValue.lowercased()) activity yet.")
                 }
-                .pickerStyle(.segmented)
+            }
 
-                if filtered.isEmpty {
-                    Text("No transactions yet.")
-                        .font(.caption)
-                        .foregroundStyle(.gray)
-                } else {
-                    ForEach(filtered) { tx in
-                        TransactionRow(transaction: tx)
+            ForEach(days, id: \.day) { group in
+                CardSection(group.day.activitySectionTitle) {
+                    Text(dayTotal(group.transactions))
+                        .font(.footnote)
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.textSecondary)
+                } content: {
+                    ForEach(Array(group.transactions.enumerated()), id: \.element.id) { index, tx in
+                        if index > 0 { RowDivider(inset: 64) }
+                        TransactionRow(transaction: tx, timeOnly: true)
                     }
                 }
             }
-            .cardStyle()
         }
+        .navigationTitle("Activity")
+        .navigationBarTitleDisplayMode(.inline)
+        .animation(Theme.quick, value: filter)
     }
+
+    /// Net cash for the day: deposits in, purchases out. Conversions don't change it.
+    private func dayTotal(_ transactions: [TransactionRecord]) -> String {
+        let net = transactions.reduce(Decimal(0)) { total, tx in
+            switch tx.kind {
+            case .deposit: return total + tx.amountUSD
+            case .purchase, .p2pSent: return total - tx.amountUSD
+            case .trade, .dcaBuy: return total
+            }
+        }
+        if net == 0 { return "" }
+        return net > 0 ? "+" + net.usd : "\u{2212}" + (-net).usd
+    }
+}
+
+#Preview {
+    NavigationStack { TransactionHistoryView() }
+        .environment(PortfolioStore.preview())
 }

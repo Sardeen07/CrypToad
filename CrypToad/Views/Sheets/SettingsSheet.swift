@@ -11,6 +11,8 @@ struct SettingsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                AccountSection()
+
                 Section {
                     Toggle(isOn: biometricBinding) {
                         Label("Require \(lock.biometryName)", systemImage: lock.biometryIcon)
@@ -18,7 +20,7 @@ struct SettingsSheet: View {
                     if let error = lock.lastError {
                         Text(error)
                             .font(.caption)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Theme.negative)
                     }
                 } header: {
                     Text("Security")
@@ -39,10 +41,12 @@ struct SettingsSheet: View {
                     }
                 }
 
-                Section {
-                    Button("Reset demo data", role: .destructive) { confirmReset = true }
-                } footer: {
-                    Text("Restores the starting balances and transactions.")
+                if !store.isSignedIn {
+                    Section {
+                        Button("Reset demo data", role: .destructive) { confirmReset = true }
+                    } footer: {
+                        Text("Restores the starting balances and transactions of the on-device demo.")
+                    }
                 }
 
                 Section("About") {

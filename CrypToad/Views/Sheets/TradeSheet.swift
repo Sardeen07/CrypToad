@@ -1,22 +1,41 @@
 import SwiftUI
 import CrypToadCore
 
-/// Buy BTC or ETH with USDC: enter an amount, review a live quote, confirm.
+/// Buy BTC or ETH with USDC: enter an amount, review a quote, confirm.
+///
+/// Signed in, the quote comes from the server and its rate is locked for 45 seconds;
+/// Buy executes exactly that quote. In the on-device demo the quote is computed locally.
 struct TradeSheet: View {
     @Environment(PortfolioStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     @State private var asset: Asset = .btc
     @State private var amount: Decimal = 50
+    @State private var serverQuote: ServerQuote?
+    @State private var quoteError: String?
+    @State private var isLoadingQuote = false
+    @State private var isBuying = false
 
     private var available: Decimal { store.state.holdings[.usdc] }
-    private var quote: TradeQuote? { store.quote(spending: amount, on: asset) }
+
+    private var quote: TradeQuote? {
+        store.isSignedIn ? serverQuote?.quote : store.quote(spending: amount, on: asset)
+    }
 
     private var validationMessage: String? {
         if amount < Trading.minimumTradeUSD { return "Minimum trade is \(Trading.minimumTradeUSD.usd)." }
         if amount > available { return "You only have \(available.usd) in USDC." }
         return nil
     }
+
+    /// Changing either input fetches a fresh server quote.
+    private struct QuoteRequest: Hashable {
+        var asset: Asset
+        var amount: Decimal
+        var refresh: Int
+    }
+
+    @State private var refreshCount = 0
 
     var body: some View {
         NavigationStack {
@@ -45,7 +64,7 @@ struct TradeSheet: View {
                     Text("Pay with USDC")
                 }
 
-                if let quote {
+                if let quote, validationMessage == nil {
                     Section {
                         LabeledContent("Price", value: "\(quote.priceUSD.usd) / \(asset.ticker)")
                         LabeledContent("Fee (1%)", value: quote.feeUSD.usd)
@@ -58,14 +77,16 @@ struct TradeSheet: View {
                     } header: {
                         Text("Quote")
                     } footer: {
-                        Text(priceFooter)
+                        quoteFooter
                     }
+                } else if store.isSignedIn && isLoadingQuote && validationMessage == nil {
+                    Section("Quote") { ProgressView("Getting a quote…") }
                 }
 
-                if let validationMessage {
+                if let message = validationMessage ?? quoteError {
                     Section {
-                        Text(validationMessage)
-                            .foregroundStyle(.red)
+                        Text(message)
+                            .foregroundStyle(Theme.negative)
                     }
                 }
             }
@@ -76,22 +97,68 @@ struct TradeSheet: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Buy") {
-                        if let quote, store.executeTrade(quote) {
-                            dismiss()
-                        }
+                    if isBuying {
+                        ProgressView()
+                    } else {
+                        Button("Buy", action: buy)
+                            .fontWeight(.semibold)
+                            .disabled(quote == nil || validationMessage != nil)
                     }
-                    .fontWeight(.semibold)
-                    .disabled(quote == nil || validationMessage != nil)
                 }
+            }
+            .task(id: QuoteRequest(asset: asset, amount: amount, refresh: refreshCount)) {
+                await loadServerQuote()
             }
         }
     }
 
-    private var priceFooter: String {
-        if store.isUsingLivePrices {
-            return "Live CoinGecko price. Quotes refresh every minute."
+    @ViewBuilder
+    private var quoteFooter: some View {
+        if let serverQuote, store.isSignedIn {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                let seconds = max(0, Int(serverQuote.expiresAt.timeIntervalSince(context.date).rounded(.down)))
+                Text(seconds > 0 ? "Rate locked by the server for \(seconds)s." : "Quote expired. Tap Buy to get a fresh one.")
+            }
+        } else {
+            Text(store.isUsingLivePrices
+                 ? "Live CoinGecko price. Quotes refresh every minute."
+                 : "Prices are not live right now; this quote uses the last known price.")
         }
-        return "Prices are not live right now; this quote uses the last known price."
+    }
+
+    private func loadServerQuote() async {
+        guard store.isSignedIn else { return }
+        serverQuote = nil
+        quoteError = nil
+        guard validationMessage == nil else { return }
+        // Debounce typing: only ask the server once the amount settles.
+        try? await Task.sleep(for: .milliseconds(450))
+        guard !Task.isCancelled else { return }
+        isLoadingQuote = true
+        defer { isLoadingQuote = false }
+        do {
+            let fresh = try await store.serverQuote(spending: amount, on: asset)
+            if !Task.isCancelled { serverQuote = fresh }
+        } catch {
+            if !Task.isCancelled { quoteError = error.localizedDescription }
+        }
+    }
+
+    private func buy() {
+        if !store.isSignedIn {
+            if let quote, store.executeTrade(quote) { dismiss() }
+            return
+        }
+        guard let serverQuote else { return }
+        if serverQuote.isExpired() {
+            refreshCount += 1  // fetch a new rate instead of failing on the server
+            return
+        }
+        isBuying = true
+        Task {
+            let ok = await store.execute(serverQuote)
+            isBuying = false
+            if ok { dismiss() } else { refreshCount += 1 }
+        }
     }
 }

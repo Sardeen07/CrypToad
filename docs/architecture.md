@@ -6,10 +6,12 @@
 > - **CrypToadCore** (`CrypToadCore/`) — a Swift package with all money logic: `Decimal` math,
 >   allocations, round-ups, DCA scheduling, the local ledger, persistence, and CoinGecko price decoding.
 >   No UI code, so it's unit-tested on macOS and Linux.
-> - **Backend** (`backend/`) — FastAPI quote/trade/history API with a PostgreSQL double-entry ledger.
+> - **Backend** (`backend/`) — FastAPI API with a PostgreSQL double-entry ledger: accounts (Sign in
+>   with Apple), round-ups, DCA, quote/trade, and Plaid bank linking.
 >
-> Partner integrations (bank linking, KYC, custody, card issuing) remain design-only; they need a
-> licensed company behind them. The app does not call the backend yet.
+> Signed out, the app runs on the device; signed in, every money movement goes through the backend
+> and the app shows the server's balances and history. Bank linking runs against Plaid's real API in
+> Sandbox. KYC, custody, and card issuing remain design-only; they need a licensed company behind them.
 
 ## System Overview
 
