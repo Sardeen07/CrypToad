@@ -19,8 +19,6 @@ struct CrypToadApp: App {
                 .environment(store)
                 .environment(lock)
                 .tint(Theme.brand)
-                // UI tests pass -force-dark to check dark mode (the headless simulator ignores its own setting).
-                .preferredColorScheme(ProcessInfo.processInfo.arguments.contains("-force-dark") ? .dark : nil)
         }
     }
 }

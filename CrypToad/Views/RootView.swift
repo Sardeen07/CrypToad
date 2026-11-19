@@ -5,6 +5,7 @@ struct RootView: View {
     @Environment(PortfolioStore.self) private var store
     @Environment(AppLock.self) private var lock
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage(AppAppearance.key, store: AppAppearance.defaults) private var appearance: AppAppearance = .system
 
     var body: some View {
         ZStack {
@@ -16,6 +17,9 @@ struct RootView: View {
             }
         }
         .animation(Theme.quick, value: lock.isLocked)
+        .onChange(of: appearance, initial: true) { _, newValue in
+            newValue.apply()
+        }
         .onChange(of: scenePhase) { _, phase in
             // Re-lock whenever the app leaves the foreground.
             if phase == .background && store.state.requireBiometricUnlock {

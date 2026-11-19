@@ -7,11 +7,23 @@ struct SettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var confirmReset = false
+    @AppStorage(AppAppearance.key, store: AppAppearance.defaults) private var appearance: AppAppearance = .system
 
     var body: some View {
         NavigationStack {
             Form {
                 AccountSection()
+
+                Section {
+                    Picker("Appearance", selection: $appearance) {
+                        ForEach(AppAppearance.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("Appearance")
+                } footer: {
+                    Text("System matches your iPhone's Light or Dark setting.")
+                }
 
                 Section {
                     Toggle(isOn: biometricBinding) {

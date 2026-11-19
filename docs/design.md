@@ -25,6 +25,10 @@ Shared components live in `CrypToad/Views/Components/`.
 Neutrals are iOS semantic colors, so app screens and native sheets/forms match exactly in both
 modes. Every text/background pair meets WCAG AA (4.5:1) for its size.
 
+**Appearance:** Settings → Appearance offers System (default, follows iOS), Light, or Dark
+([`Appearance.swift`](../CrypToad/App/Appearance.swift)). It overrides the window's interface
+style, so sheets and alerts follow too.
+
 **Rules:** no gradients, no glows, no translucent "glass" cards, no shadows. Card purchases show
 in the primary text color, not red; red means something went wrong or value went down.
 
@@ -64,5 +68,6 @@ At accessibility text sizes rows stack (value under title) and amounts never wra
 
 ## Checking a change
 
-`ScreenTourUITests` visits every screen and attaches screenshots in light mode, dark mode, and an
-accessibility text size (see `docs/screenshots/README.md`).
+`ScreenTourUITests` visits every screen and attaches screenshots in light mode, dark mode (launched
+with `-appearance dark`), and an accessibility text size (see `docs/screenshots/README.md`). It also
+taps Settings → Appearance → Dark/Light and checks the screen's brightness actually changes.

@@ -15,7 +15,36 @@ final class ScreenTourUITests: XCTestCase {
 
     /// In the simulator's current appearance.
     func testTour() { tour(name: "tour") }
-    func testTourDark() { tour(name: "dark", arguments: ["-force-dark"]) }
+    /// Dark mode via the app's Appearance setting, preset from the launch arguments.
+    func testTourDark() { tour(name: "dark", arguments: ["-appearance", "dark"]) }
+
+    /// Settings → Appearance actually switches the app between light and dark.
+    func testAppearanceSetting() {
+        // No -appearance argument here: launch arguments override saved settings, which would
+        // hide the choice made in Settings. The simulator itself is in light mode.
+        app = XCUIApplication()
+        app.launchArguments = ["-ui-testing"]
+        app.launch()
+        tapTab("Home")
+        XCTAssertTrue(element("Portfolio").waitForExistence(timeout: 10))
+        XCTAssertGreaterThan(backgroundBrightness(), 0.8, "starts light")
+
+        for (choice, expectDark) in [("Dark", true), ("Light", false)] {
+            app.buttons["Settings"].tap()
+            let segment = app.buttons[choice]
+            XCTAssertTrue(segment.waitForExistence(timeout: 5))
+            segment.tap()
+            app.buttons["Done"].tap()
+            sleep(1)
+            let brightness = backgroundBrightness()
+            if expectDark {
+                XCTAssertLessThan(brightness, 0.2, "Dark should darken the app")
+                shot("appearance-dark")
+            } else {
+                XCTAssertGreaterThan(brightness, 0.8, "Light should brighten the app")
+            }
+        }
+    }
     /// Accessibility text size, to check layouts hold up under Dynamic Type.
     func testTourLargeText() { tour(name: "large-text", arguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"]) }
 
@@ -23,6 +52,7 @@ final class ScreenTourUITests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments = ["-ui-testing"] + arguments
         app.launch()
+        tapTab("Home")  // iOS may restore the last tab
 
         XCTAssertTrue(element("Portfolio").waitForExistence(timeout: 10) || element("Total").waitForExistence(timeout: 2))
         shot("\(mode)-01-home")
@@ -90,6 +120,20 @@ final class ScreenTourUITests: XCTestCase {
     private func goBack() {
         let back = app.navigationBars.buttons.firstMatch
         if back.exists && back.isHittable { back.tap() } else { tapTab("Home") }
+    }
+
+    /// Brightness (0–1) of the page background at the left margin, halfway down the screen.
+    private func backgroundBrightness() -> CGFloat {
+        let image = app.screenshot().image
+        guard let cg = image.cgImage else { return -1 }
+        let x = Int(6 * image.scale), y = cg.height / 2
+        var pixel = [UInt8](repeating: 0, count: 4)
+        let context = CGContext(
+            data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )
+        context?.draw(cg, in: CGRect(x: -x, y: -(cg.height - y - 1), width: cg.width, height: cg.height))
+        return (CGFloat(pixel[0]) + CGFloat(pixel[1]) + CGFloat(pixel[2])) / (3 * 255)
     }
 
     private func shot(_ name: String) {
