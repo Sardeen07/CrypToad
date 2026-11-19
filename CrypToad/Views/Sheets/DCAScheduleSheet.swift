@@ -24,7 +24,7 @@ struct DCAScheduleSheet: View {
                         ForEach(quickAmounts, id: \.self) { value in
                             Button(value.usd) { amount = value }
                                 .buttonStyle(.bordered)
-                                .tint(amount == value ? Color.blue : Color.gray)
+                                .tint(amount == value ? Theme.brand : Theme.textSecondary)
                         }
                     }
                 }

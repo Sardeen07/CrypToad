@@ -16,5 +16,7 @@ rather than a public issue.
 The intended production security design (Argon2id password hashing, MFA,
 Secure Enclave biometrics, encryption at rest, audit logging) is documented
 in [`docs/security.md`](docs/security.md). Implemented so far: the Face ID app
-lock in the iOS app, and hashed API tokens, row locking, idempotency keys, and
-an append-only audit log in the backend prototype.
+lock and Keychain-stored session token in the iOS app; and in the backend,
+Sign in with Apple token verification (signature, audience, expiry, nonce),
+per-device sessions stored as SHA-256 hashes, encrypted Plaid access tokens,
+row locking, idempotency keys, account deletion, and an append-only audit log.

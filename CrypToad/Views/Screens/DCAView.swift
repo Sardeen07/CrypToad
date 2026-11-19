@@ -1,98 +1,86 @@
 import SwiftUI
 import CrypToadCore
 
-/// Dollar-cost averaging: recurring buys on a schedule.
+/// Dollar-cost averaging: a recurring buy on a schedule, split by a strategy.
 struct DCAView: View {
     @Environment(PortfolioStore.self) private var store
-    let navigate: (Screen) -> Void
     let present: (ActiveSheet) -> Void
 
     private var dca: DCASettings { store.state.dca }
 
     var body: some View {
-        VStack(spacing: 24) {
-            BackButton { navigate(.home) }
-            scheduleCard
-            statusCard
-            strategyCard
-        }
-    }
-
-    private var scheduleCard: some View {
-        ZStack {
-            LinearGradient(colors: [.blue, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Auto-Investment (DCA)")
+        ScreenScroll {
+            HeroFigure("Recurring buy", amount: dca.amountUSD) {
+                Text(scheduleText)
                     .font(.subheadline)
-                    .opacity(0.8)
-                Text(dca.amountUSD.usd)
-                    .font(.system(size: 40, weight: .bold))
-                    .monospacedDigit()
-                Text("Every \(dca.frequency.everyPhrase)")
-                    .font(.caption)
-                    .opacity(0.9)
-                if dca.enabled {
-                    Text("Next buy: \(dca.nextRun.formatted(date: .abbreviated, time: .shortened))")
-                        .font(.caption)
-                        .opacity(0.9)
-                }
-
-                HStack(spacing: 12) {
-                    Button("Edit Schedule") { present(.dcaSchedule) }
-                    Button("Buy Now") { store.runDCANow() }
-                }
-                .buttonStyle(.bordered)
-                .tint(.white)
-                .padding(.top, 4)
+                    .foregroundStyle(Theme.textSecondary)
             }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(24)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
 
-    private var statusCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Toggle(isOn: Binding(get: { dca.enabled }, set: { store.setDCAEnabled($0) })) {
-                Text("DCA Status")
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.white)
+            HStack(spacing: Theme.Space.m) {
+                Button("Buy Now") { store.runDCANow() }
+                    .buttonStyle(.primary)
+                Button("Edit Schedule") { present(.dcaSchedule) }
+                    .buttonStyle(.secondary)
             }
-            Text(dca.enabled
-                 ? "Automatic investments are active. Missed buys run the next time prices load."
-                 : "DCA is paused. Turn on to resume automatic investing.")
-                .font(.caption)
-                .foregroundStyle(.gray)
-        }
-        .cardStyle()
-    }
+            .disabled(store.isWorking)
 
-    private var strategyCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Investment Strategy")
-                .fontWeight(.semibold)
-                .foregroundStyle(.white)
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                CardSection {
+                    ToggleRow(
+                        title: "Automatic investing",
+                        isOn: Binding(get: { dca.enabled }, set: { store.setDCAEnabled($0) })
+                    )
+                }
+                SectionNote(dca.enabled
+                    ? "Buys run on schedule. Any missed while the app was closed run the next time prices load."
+                    : "Turn on to resume automatic investing.")
+            }
 
-            ForEach(Allocation.presets) { preset in
-                StrategyCard(
-                    title: preset.name,
-                    description: preset.allocation.summary,
-                    isActive: dca.allocation == preset.allocation
+            CardSection("Strategy") {
+                ForEach(Array(Allocation.presets.enumerated()), id: \.element.id) { index, preset in
+                    if index > 0 { RowDivider() }
+                    strategyRow(preset.name, detail: preset.allocation.summary, selected: dca.allocation == preset.allocation) {
+                        store.setDCAAllocation(preset.allocation)
+                    }
+                }
+                RowDivider()
+                strategyRow(
+                    "Custom",
+                    detail: dca.allocation.presetName == nil ? dca.allocation.summary : "Set your own split",
+                    selected: dca.allocation.presetName == nil,
+                    opensEditor: true
                 ) {
-                    store.setDCAAllocation(preset.allocation)
+                    present(.dcaAllocation)
                 }
             }
+        }
+    }
 
-            StrategyCard(
-                title: "Custom",
-                description: dca.allocation.presetName == nil ? dca.allocation.summary : "Set your own split",
-                isActive: dca.allocation.presetName == nil
-            ) {
-                present(.dcaAllocation)
+    private var scheduleText: String {
+        let every = "Every \(dca.frequency.everyPhrase)"
+        guard dca.enabled else { return "\(every) · Paused" }
+        return "\(every) · Next buy \(dca.nextRun.formatted(.dateTime.month(.abbreviated).day().hour().minute()))"
+    }
+
+    private func strategyRow(_ title: String, detail: String, selected: Bool, opensEditor: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            InfoRow(title, subtitle: detail) {
+                HStack(spacing: Theme.Space.m) {
+                    if selected {
+                        Image(systemName: "checkmark")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(Theme.brand)
+                    }
+                    if opensEditor { Chevron() }
+                }
             }
         }
-        .cardStyle()
+        .buttonStyle(.row)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
+}
+
+#Preview {
+    NavigationStack { DCAView(present: { _ in }).navigationTitle("Invest") }
+        .environment(PortfolioStore.preview())
 }

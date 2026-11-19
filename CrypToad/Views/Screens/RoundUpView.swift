@@ -1,158 +1,111 @@
 import SwiftUI
 import CrypToadCore
 
+/// Round-ups: spare change from every purchase, invested by allocation.
 struct RoundUpView: View {
     @Environment(PortfolioStore.self) private var store
-    let navigate: (Screen) -> Void
     let present: (ActiveSheet) -> Void
 
     private var settings: RoundUpSettings { store.state.roundUps }
 
     var body: some View {
-        VStack(spacing: 24) {
-            BackButton { navigate(.home) }
-            totalCard
-            statusCard
-            allocationCard
-            historyCard
-        }
-    }
-
-    private var totalCard: some View {
-        ZStack {
-            LinearGradient(colors: [.green, .green.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Total Invested via Round-Ups")
-                    .font(.subheadline)
-                    .opacity(0.8)
-                Text(store.state.roundUpTotal.usd)
-                    .font(.system(size: 40, weight: .bold))
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                    .animation(.default, value: store.state.roundUpTotal)
+        ScreenScroll {
+            HeroFigure("Invested from round-ups", amount: store.state.roundUpTotal) {
                 let count = store.state.roundUpTransactions.count
                 Text("From \(count) purchase\(count == 1 ? "" : "s")")
-                    .font(.caption)
-                    .opacity(0.9)
-            }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(24)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-
-    private var statusCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Toggle(isOn: Binding(get: { settings.enabled }, set: { store.setRoundUpsEnabled($0) })) {
-                Text("Round-Up Status")
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.white)
-            }
-
-            Text(settings.enabled
-                 ? "Round-ups are active. Every card purchase is rounded up and the spare change is invested automatically."
-                 : "Round-ups are paused. Turn on to start investing spare change.")
-                .font(.caption)
-                .foregroundStyle(.gray)
-
-            HStack {
-                Text("Multiplier")
                     .font(.subheadline)
-                    .foregroundStyle(.white)
-                Spacer()
-                Picker("Multiplier", selection: Binding(get: { settings.multiplier }, set: { store.setRoundUpMultiplier($0) })) {
-                    Text("1×").tag(1)
-                    Text("2×").tag(2)
-                    Text("3×").tag(3)
-                    Text("5×").tag(5)
-                }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 200)
-            }
-            .disabled(!settings.enabled)
-        }
-        .cardStyle()
-    }
-
-    private var allocationCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Allocation")
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.white)
-                Spacer()
-                if let name = settings.allocation.presetName {
-                    Text(name)
-                        .font(.caption)
-                        .foregroundStyle(.gray)
-                }
+                    .foregroundStyle(Theme.textSecondary)
             }
 
-            ForEach(Asset.allCases) { asset in
-                AllocationBar(label: "\(asset.displayName) (\(asset.ticker))", percentage: settings.allocation[asset], color: Theme.color(for: asset))
-            }
-
-            Button(action: { present(.roundUpAllocation) }) {
-                Text("Customize Allocation")
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-        }
-        .cardStyle()
-    }
-
-    private var historyCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Round-Up History")
-                .fontWeight(.semibold)
-                .foregroundStyle(.white)
-
-            if store.state.roundUpTransactions.isEmpty {
-                Text("No round-ups yet. Tap Simulate Purchase on the Home tab.")
-                    .font(.caption)
-                    .foregroundStyle(.gray)
-            }
-
-            ForEach(store.state.roundUpTransactions) { tx in
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(tx.title)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.white)
-                        Text(tx.date.formatted(date: .abbreviated, time: .omitted))
-                            .font(.caption)
-                            .foregroundStyle(.gray)
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                CardSection {
+                    ToggleRow(
+                        title: "Round up purchases",
+                        subtitle: settings.enabled ? "Spare change is invested automatically" : "Paused",
+                        isOn: Binding(get: { settings.enabled }, set: { store.setRoundUpsEnabled($0) })
+                    )
+                    RowDivider()
+                    HStack {
+                        Text("Multiplier")
+                            .font(.body)
+                            .foregroundStyle(Theme.textPrimary)
+                        Spacer()
+                        Picker("Multiplier", selection: Binding(get: { settings.multiplier }, set: { store.setRoundUpMultiplier($0) })) {
+                            Text("1×").tag(1)
+                            Text("2×").tag(2)
+                            Text("3×").tag(3)
+                            Text("5×").tag(5)
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 200)
                     }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("+" + tx.roundUpUSD.usd)
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.green)
-                        Text(fillSummary(tx))
-                            .font(.caption)
-                            .foregroundStyle(.gray)
-                    }
+                    .padding(.horizontal, Theme.Space.l)
+                    .padding(.vertical, Theme.Space.m)
+                    .disabled(!settings.enabled)
+                    .opacity(settings.enabled ? 1 : 0.5)
                 }
-                .rowStyle()
+                SectionNote("A $4.25 purchase rounds up to $5.00 and invests $0.75. A 2× multiplier invests $1.50.")
+            }
+
+            CardSection(settings.allocation.presetName ?? "Allocation") {
+                Button("Edit") { present(.roundUpAllocation) }
+                    .font(.subheadline.weight(.medium))
+            } content: {
+                AllocationStrip(weights: Dictionary(uniqueKeysWithValues: Asset.allCases.map { ($0, Decimal(settings.allocation[$0])) }))
+                    .padding([.horizontal, .top], Theme.Space.l)
+                    .padding(.bottom, Theme.Space.xs)
+                ForEach(Array(Asset.allCases.enumerated()), id: \.element) { index, asset in
+                    if index > 0 { RowDivider(inset: 56) }
+                    InfoRow(asset.displayName) {
+                        AssetIcon(asset: asset, size: 28)
+                    } trailing: {
+                        Text("\(settings.allocation[asset])%")
+                            .font(.body.weight(.semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+
+            CardSection("History") {
+                let roundUps = store.state.roundUpTransactions
+                if roundUps.isEmpty {
+                    EmptyRow(text: "No round-ups yet. Make a purchase from Home to see one here.")
+                }
+                ForEach(Array(roundUps.enumerated()), id: \.element.id) { index, tx in
+                    if index > 0 { RowDivider(inset: 64) }
+                    InfoRow(tx.title, subtitle: tx.date.formatted(.dateTime.month(.abbreviated).day())) {
+                        IconTile(systemName: TransactionRow.symbol(for: tx))
+                    } trailing: {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("+" + tx.roundUpUSD.usd)
+                                .font(.body.weight(.semibold))
+                                .monospacedDigit()
+                                .foregroundStyle(Theme.positive)
+                            Text(fillSummary(tx))
+                                .font(.footnote)
+                                .monospacedDigit()
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
             }
         }
-        .cardStyle()
     }
 
-    /// "0.0000081 BTC" for a single fill, "to Mixed" for several.
+    /// "0.0000081 BTC" for a single fill, "BTC · ETH · USDC" for several.
     private func fillSummary(_ tx: TransactionRecord) -> String {
         let bought = tx.fills.filter { !$0.asset.isStablecoin && $0.quantity > 0 }
         if bought.count == 1, let fill = bought.first {
             return fill.asset.format(fill.quantity)
         }
-        return "to \(tx.investedSummary ?? "USDC")"
+        return tx.investedTickers ?? "USDC"
     }
+}
+
+#Preview {
+    NavigationStack { RoundUpView(present: { _ in }).navigationTitle("Round-Ups") }
+        .environment(PortfolioStore.preview())
 }

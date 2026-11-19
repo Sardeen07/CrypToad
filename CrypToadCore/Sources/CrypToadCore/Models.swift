@@ -57,6 +57,8 @@ public struct TransactionRecord: Identifiable, Codable, Hashable, Sendable {
     public var feeUSD: Decimal
     /// Crypto acquired by this transaction (DCA buys, trades, and round-ups).
     public var fills: [Fill]
+    /// `true` when a round-up was due but skipped (e.g. not enough USDC). Optional so older saved data still loads.
+    public var roundUpSkipped: Bool?
 
     public init(
         id: UUID = UUID(),
@@ -66,7 +68,8 @@ public struct TransactionRecord: Identifiable, Codable, Hashable, Sendable {
         amountUSD: Decimal,
         roundUpUSD: Decimal = 0,
         feeUSD: Decimal = 0,
-        fills: [Fill] = []
+        fills: [Fill] = [],
+        roundUpSkipped: Bool? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -76,6 +79,7 @@ public struct TransactionRecord: Identifiable, Codable, Hashable, Sendable {
         self.roundUpUSD = roundUpUSD
         self.feeUSD = feeUSD
         self.fills = fills
+        self.roundUpSkipped = roundUpSkipped
     }
 
     /// Money coming in rather than going out.

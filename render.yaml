@@ -1,0 +1,40 @@
+# Render Blueprint: deploys the CrypToad API + a PostgreSQL database.
+# Render dashboard → New → Blueprint → pick this repo. Then fill in the Plaid keys
+# (marked sync: false) in the service's Environment tab.
+#
+# This is a DEMO deployment: money is simulated, so demo accounts and simulated
+# paychecks/card swipes are enabled. Turn CRYPTOAD_ENABLE_DEV_ENDPOINTS off before
+# anything real ever touches it.
+services:
+  - type: web
+    name: cryptoad-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: CRYPTOAD_DATABASE_URL
+        fromDatabase:
+          name: cryptoad-db
+          property: connectionString
+      - key: CRYPTOAD_SECRET_KEY
+        generateValue: true
+      - key: CRYPTOAD_PRICE_SOURCE
+        value: coingecko
+      - key: CRYPTOAD_ENABLE_DEV_ENDPOINTS
+        value: "true"
+      - key: CRYPTOAD_APPLE_AUDIENCES
+        value: com.sardeen07.cryptoad
+      - key: CRYPTOAD_PLAID_ENV
+        value: sandbox
+      - key: CRYPTOAD_PLAID_CLIENT_ID
+        sync: false
+      - key: CRYPTOAD_PLAID_SECRET
+        sync: false
+
+databases:
+  - name: cryptoad-db
+    plan: free
+    databaseName: cryptoad
+    user: cryptoad

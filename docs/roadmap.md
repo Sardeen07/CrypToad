@@ -14,7 +14,15 @@
 - [x] Buy BTC/ETH with USDC (quote, 1% fee, confirm)
 - [x] Scheduled DCA that catches up on missed buys
 - [x] CI: core tests on Linux + macOS, iOS build, backend tests
-- [ ] Connect the app to the backend API
+- [x] Connect the app to the backend API (server mode, synced balances and history)
+- [x] Accounts: Sign in with Apple, demo accounts, per-device sessions, account deletion
+- [x] Server-side round-ups, DCA buys, card swipes, and a unified activity feed
+- [x] Bank linking with Plaid (Sandbox) and Acorns-style round-ups of bank purchases
+- [x] One-click backend deploy (Render Blueprint)
+- [x] End-to-end UI test (XCUITest) against a running backend
+- [ ] Plaid Link SDK in the app (link real banks instead of the Sandbox test bank)
+- [ ] Database migrations (Alembic) and backend tests against PostgreSQL in CI
+- [ ] TestFlight build
 - [ ] Portfolio chart (Swift Charts) from transaction history
 - [ ] Home-screen widget with portfolio value
 - [ ] Local notifications for DCA buys and round-up milestones
